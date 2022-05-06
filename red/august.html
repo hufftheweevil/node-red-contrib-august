@@ -1,0 +1,174 @@
+<script type="text/javascript">
+  RED.nodes.registerType('august', {
+    category: 'devices',
+    defaults: {
+      account: { value: '', required: true, type: 'august-account' },
+      lock: { value: '', required: false },
+      name: { required: false }
+    },
+    color: '#D4493E',
+    inputs: 1,
+    outputs: 1,
+
+    icon: 'font-awesome/fa-key',
+    label: function () {
+      return this.name || 'august'
+    },
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : ''
+    },
+    oneditprepare: function () {
+      // Lock selector is udpated manually (because it's options need to be fetched)
+      let input = $('#node-input-lock--') // Unique name prevents Node-Red from setting/getting automatically
+
+      // Create a placeholder for currenty option before fetch is complete
+      if (this.lock) input.append($('<option>').val(this.lock).text(this.lock)).val(this.lock)
+
+      function updateLockList() {
+        let account = RED.nodes.node($('#node-input-account').val())
+        if (!account) return // No account selected
+        if (!account.validated) return RED.notify('Account not validated yet', 'error')
+
+        $.post('august/listLocks', {
+          installId: account.id,
+          augustId: account.augustId,
+          password: account.credentials?.password // Provided here if account node not deployed yet; Otherwise server-side will take care of it
+        })
+          .done(function (data) {
+            if (!data || data.length <= 0) return // No data returned
+
+            // Re-generate select input
+            let currentVal = input.val()
+            data = data.map(lock => ({ name: `${lock.LockName} (${lock.HouseName})`, ...lock }))
+            data.sort((a, b) => a.name.localeCompare(b.name))
+            data.unshift({ id: '', name: '' })
+            input
+              .empty()
+              .append(data.map(lock => $('<option>').val(lock.id).text(lock.name)))
+              .val(currentVal)
+          })
+          .fail(function (err) {
+            RED.notify(err.responseText, 'error')
+            let currentVal = input.val()
+            input.empty()
+            if (currentVal)
+              input.append($('<option>').val(currentVal).text(currentVal)).val(currentVal)
+          })
+      }
+
+      updateLockList()
+      $('#node-button-refresh-locks').click(updateLockList)
+      $('#node-input-account').change(updateLockList)
+    },
+    oneditsave: function () {
+      // Manually save value
+      this.lock = $('#node-input-lock--').val()
+    }
+  })
+</script>
+
+<script type="text/html" data-template-name="august">
+  <div class="form-row">
+    <label for="node-input-account"><i class="fa fa-id-card"></i> Account</label>
+    <input type="text" id="node-input-account" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-lock--"><i class="fa fa-key"></i> Lock</label>
+    <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
+      <select id="node-input-lock--" style="width: calc(100% - 40px)"></select>
+      <a
+        id="node-button-refresh-locks"
+        class="red-ui-button"
+        style="position: absolute; right: 0px; top: 0px;"
+        ><i class="fa fa-refresh"></i
+      ></a>
+    </div>
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-input-name" />
+  </div>
+</script>
+
+<script type="text/html" data-help-name="august">
+  <p>Interact with an August lock</p>
+  <h3>Properties</h3>
+  <dl class="message-properties">
+    <dt class="required">Account</dt>
+    <dd>A configured and validated August account</dd>
+    <dt>Lock</dt>
+    <dd>
+      The lock to interact with. Use the blank option to allow input as <code>msg.topic</code> or
+      call commands without a lock.
+    </dd>
+    <dt>Name</dt>
+    <dd>Optional node name.</dd>
+  </dl>
+  <h3>Input</h3>
+  <dl class="message-properties">
+    <dt><code>topic</code> <span class="property-type">string</span></dt>
+    <dd>
+      If not set in properties, send in Lock ID. Note: This will NOT override Lock property. Leave
+      empty (with empty property) to call commands without a lock.
+    </dd>
+    <dt class="required"><code>payload</code> <span class="property-type">string</span></dt>
+    <dd>
+      Must be one of the following strings:
+      <ul>
+        <li>
+          <code>getLocks</code> - Retrieves list of <b>all</b> locks. Note: Lock set in properties
+          or input message as topic will be ignored. (See
+          <a href="https://github.com/hufftheweevil/august-api#locks--object">API docs</a> for
+          details).
+        </li>
+        <li>
+          <code>getDetails</code> - Retrieves identifying information about the lock and sends to
+          output (See
+          <a href="https://github.com/hufftheweevil/august-api#detailslockid--object--arrayobjects"
+            >API docs</a
+          >
+          for details). If lock not set in properties or input message as topic, this will get
+          details for <b>all</b> locks.
+        </li>
+        <li>
+          <code>getStatus</code> - Retrieves status of the lock and sends to output (See
+          <a href="https://github.com/hufftheweevil/august-api#statuslockid--object--arrayobjects"
+            >API docs</a
+          >
+          for details). If lock not set in properties or input message as topic, this will get
+          details for <b>all</b> locks.
+        </li>
+        <li><code>lock</code> - Locks the lock</li>
+        <li><code>unlock</code> - Unlocks the lock</li>
+        <li>
+          <code>subscribe</code> - Begins listening for lock events
+          <br />
+          <span style="font-size: small; font-style: italic">
+            Events will output on this node as <code>{topic: lockId, payload: event}</code> (See
+            <a href="https://github.com/hufftheweevil/august-api#subscribelockid-callback--function"
+              >API docs</a
+            >
+            for details).
+          </span>
+        </li>
+        <li><code>unsubscribe</code> - Ends listening</li>
+      </ul>
+    </dd>
+  </dl>
+  <h3>Output</h3>
+  <p>
+    <code>get...</code> and <code>lock/unlock</code> commands will output response from API.
+    Messages will also output if listening is turned on.
+  </p>
+  <dl class="message-properties">
+    <dt><code>topic</code> <span class="property-type">string</span></dt>
+    <dd>Lock ID (if payload is for a single lock, otherwise not included)</dd>
+    <dt class="required"><code>payload</code> <span class="property-type">object</span></dt>
+    <dd>Response from the API</dd>
+    <dt class="required"><code>command</code> <span class="property-type">string</span></dt>
+    <dd>
+      The original command that triggered this response (i.e. the input <code>payload</code>) or if
+      from the listener, then "event"
+    </dd>
+  </dl>
+</script>

@@ -1,0 +1,31 @@
+{
+  "name": "node-red-contrib-august",
+  "version": "0.0.1",
+  "description": "Node-RED node to connect to August locks",
+  "main": "index.js",
+  "scripts": {},
+  "author": "hufftheweevil",
+  "license": "MIT",
+  "dependencies": {
+    "august-api": "^1.4.0"
+  },
+  "node-red": {
+    "nodes": {
+      "august": "red/august.js",
+      "august-account": "red/august-account.js"
+    }
+  },
+  "keywords": [
+    "node-red",
+    "august",
+    "yale",
+    "smart lock",
+    "smartlock",
+    "wifi lock"
+  ],
+  "homepage": "https://github.com/hufftheweevil/node-red-contrib-august",
+  "repository": "github:hufftheweevil/node-red-contrib-august",
+  "engines": {
+    "node": ">=14"
+  }
+}

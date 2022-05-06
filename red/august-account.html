@@ -1,0 +1,158 @@
+<script type="text/javascript">
+  const copyButton = text => {
+    let button = $('<button class="red-ui-button red-ui-button-small" style="margin-left: 5px">')
+      .html('<i class="fa fa-copy"></i>')
+      .on('click', function (e) {
+        RED.clipboard.copyText(text)
+      })
+
+    RED.popover.tooltip(button, 'Copy')
+    return button
+  }
+
+  RED.nodes.registerType('august-account', {
+    category: 'config',
+    defaults: {
+      augustId: { type: 'text', required: true },
+      validated: { type: 'boolean', value: false }
+    },
+    credentials: {
+      password: { type: 'password', required: true }
+    },
+    label: function () {
+      return this.augustId + (this.validated ? '' : ' (not validated)')
+    },
+    oneditprepare: function () {
+      let node = this
+
+      let getConfig = () => ({
+        installId: this.id,
+        augustId: $('#node-config-input-augustId').val(),
+        password: $('#node-config-input-password').val()
+      })
+
+      let validationContainer = $('#august-validation')
+
+      validationContainer.text(this.validated ? 'Yes' : 'No')
+
+      if (this.validated) {
+        $('#node-config-input-augustId').prop('disabled', true)
+        getLockList()
+      } else {
+        $('<button>')
+          .addClass('red-ui-button')
+          .text('Send validation code')
+          .css({ minWidth: 'fit-content' })
+          .click(function () {
+            let config = getConfig()
+            $.post('august/auth', { config })
+              .done(data => {
+                // this == the send code button
+                $(this).text('Re-send validation code')
+
+                validationContainer.append(
+                  $('<div>').text(`Code sent to ${config.augustId}`),
+
+                  $('<input type="text" id="node-config-input-code" placeholder="Enter code">'),
+
+                  $('<button>')
+                    .addClass('red-ui-button')
+                    .text('Validate code')
+                    .click(function () {
+                      let code = $('#node-config-input-code').val()
+                      $.post('august/auth', { config, code })
+                        .done(data => {
+                          validationContainer.text('Yes')
+                          node.validated = true
+                          $('#node-config-input-augustId').prop('disabled', true)
+                          getLockList()
+                        })
+                        .fail(err => RED.notify(err.responseText, 'error'))
+                    })
+                )
+              })
+              .fail(err => RED.notify(err.responseText, 'error'))
+          })
+          .appendTo(validationContainer)
+      }
+
+      function getLockList() {
+        $.post('august/listLocks', getConfig()).done(data => {
+          if (!data?.length)
+            $('#node-config-input-august-lock-list')
+              .empty()
+              .append($('<div>').html('<i class="fa fa-key"></i> No locks found on account'))
+          else
+            $('#node-config-input-august-lock-list')
+              .empty()
+              .append(
+                $('<div>').html('<i class="fa fa-key"></i> Locks found on account'),
+                data.map((lock, i) =>
+                  $('<div>')
+                    .css({ border: 'solid 1px', padding: 10 })
+                    .append([
+                      $('<div>')
+                        .html(`Lock ID: <code>${lock.id}</code>`)
+                        .append(copyButton(lock.id)),
+                      $('<div>').html(`Lock Name: ${lock.LockName}`),
+                      $('<div>')
+                        .html(`House ID: <code>${lock.HouseID}</code>`)
+                        .append(copyButton(lock.HouseID)),
+                      $('<div>').html(`House Name: ${lock.HouseName}`),
+                      $('<div>')
+                        .html(`MAC Address: <code>${lock.macAddress}</code>`)
+                        .append(copyButton(lock.macAddress))
+                    ])
+                )
+              )
+        })
+      }
+    }
+  })
+</script>
+
+<script type="text/html" data-template-name="august-account">
+  <div class="form-row">
+    <label for="node-config-input-augustId"><i class="fa fa-id-card"></i> ID</label>
+    <input type="text" id="node-config-input-augustId" />
+  </div>
+  <div class="form-row">
+    <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
+    <input type="password" id="node-config-input-password" />
+  </div>
+  <div class="form-row" style="display:flex">
+    <label for="node-config-input-validated"><i class="fa fa-check"></i> Validated</label>
+    <div id="august-validation" style="display:flex; flex-direction:column; gap:10px"></div>
+  </div>
+  <div
+    id="node-config-input-august-lock-list"
+    style="display:flex; flex-direction:column; gap:10px"
+  ></div>
+</script>
+
+<script type="text/html" data-help-name="august-account">
+  <p>This node configures the account to be used by the August nodes.</p>
+  <p>
+    ID must be your August email or phone number. Phone number must be formatted as
+    <code>+[countrycode][phonenumber]</code>.
+  </p>
+  <p>
+    Before using, the account must be validated. To validate the account, click the
+    <b>Send validation code</b> button.
+  </p>
+  <p>
+    The validation code will be sent to the email or phone entered. Entered the code and click the
+    <b>Validate code</b> button.
+  </p>
+  <p>
+    After validation, you can not change the ID for this config node. To use a different account,
+    make a new config node.
+  </p>
+  <p>Locks found on account will be listed for ease of use.</p>
+  <p>
+    <b>
+      Make sure to click <i>Add/Update</i> after validation to save validation results. Failure to
+      do so means you will need to validate again.
+    </b>
+  </p>
+</script>
