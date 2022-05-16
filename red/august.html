@@ -4,7 +4,8 @@
     defaults: {
       account: { value: '', required: true, type: 'august-account' },
       lock: { value: '', required: false },
-      name: { required: false }
+      name: { required: false },
+      autoSubscribe: { value: false, required: false }
     },
     color: '#D4493E',
     inputs: 1,
@@ -88,6 +89,15 @@
     <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
     <input type="text" id="node-input-name" />
   </div>
+  <div class="form-row">
+    <label for="node-input-autoSubscribe">&nbsp;</label>
+    <input
+      type="checkbox"
+      id="node-input-autoSubscribe"
+      style="display:inline-block; width:15px; vertical-align:baseline;"
+    />
+    <span> Auto-subscribe</span>
+  </div>
 </script>
 
 <script type="text/html" data-help-name="august">
@@ -103,6 +113,11 @@
     </dd>
     <dt>Name</dt>
     <dd>Optional node name.</dd>
+    <dt>Auto-subscribe</dt>
+    <dd>
+      If enabled, events will automatically start when node is deployed. You can still use the
+      <code>unsubscribe</code> command to stop events.
+    </dd>
   </dl>
   <h3>Input</h3>
   <dl class="message-properties">
@@ -113,7 +128,7 @@
     </dd>
     <dt class="required"><code>payload</code> <span class="property-type">string</span></dt>
     <dd>
-      Must be one of the following strings:
+      The command. Must be one of the following strings:
       <ul>
         <li>
           <code>getLocks</code> - Retrieves list of <b>all</b> locks. Note: Lock set in properties

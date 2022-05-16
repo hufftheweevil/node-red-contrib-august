@@ -11,7 +11,31 @@ module.exports = function (RED) {
     RED.nodes.createNode(this, config)
     const node = this
 
-    this.subscribed = null
+    node.subscribed = null
+
+    let subscribe = async lockId => {
+      if (node.subscribed) return // don't subscribe twice
+
+      node.subscribed = await api.subscribe(lockId, payload =>
+        node.send({
+          topic: payload.lockID ?? payload.LockID ?? payload.lockId,
+          payload,
+          command: 'event'
+        })
+      )
+
+      let text = 'Listening to '
+      if (lockId) {
+        let _lock = await api.details(lockId)
+        text += `${_lock?.LockName} (${_lock?.HouseName})`
+      } else {
+        text += 'all'
+      }
+      node.status({ fill: 'green', shape: 'dot', text })
+    }
+
+    // If auto-subscribe is enabled, subscribe to the lock (or all locks if undefined)
+    if (config.autoSubscribe) subscribe(config.lock)
 
     // Data/request from node, pass to api and return response
     node.on('input', async (msg, send, done) => {
@@ -24,48 +48,31 @@ module.exports = function (RED) {
         switch (command) {
           case 'getLocks':
             output(await api.locks())
-            break
+            return
 
           case 'getDetails':
             output(await api.details(lockId))
-            break
+            return
 
           case 'getStatus':
             output(await api.status(lockId))
-            break
+            return
 
           case 'lock':
             output(await api.lock(lockId))
-            break
+            return
 
           case 'unlock':
             output(await api.unlock(lockId))
-            break
+            return
 
           case 'subscribe':
-            if (this.subscribed) return // don't subscribe twice
-
-            this.subscribed = await api.subscribe(lockId, payload =>
-              send({
-                topic: payload.lockID ?? payload.LockID ?? payload.lockId,
-                payload,
-                command: 'event'
-              })
-            )
-
-            let text = 'Listening to '
-            if (lockId) {
-              let _lock = await api.details(lockId)
-              text += `${_lock?.LockName} (${_lock?.HouseName})`
-            } else {
-              text += 'all'
-            }
-            node.status({ fill: 'green', shape: 'dot', text })
+            subscribe(lockId)
             return
 
           case 'unsubscribe':
-            this.subscribed?.() // unsubscribe
-            this.subscribed = null
+            node.subscribed?.() // unsubscribe
+            node.subscribed = null
             node.status({})
             return
 
@@ -78,7 +85,7 @@ module.exports = function (RED) {
     })
 
     node.on('close', () => {
-      this.subscribed?.() // unsubscribe if subscribed
+      node.subscribed?.() // unsubscribe if subscribed
     })
   }
 
