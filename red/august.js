@@ -18,7 +18,8 @@ module.exports = function (RED) {
       let lockId = config.lock || msg.topic
       let command = msg.payload
 
-      let output = payload => send({ topic: lockId, payload, command })
+      let output = payload =>
+        send({ topic: lockId, payload, command: command === 'subscribe' ? 'event' : command })
 
       try {
         switch (command) {
@@ -48,7 +49,7 @@ module.exports = function (RED) {
             let text = 'Listening to '
             if (lockId) {
               let _lock = await api.details(lockId)
-              text += `${_lock.LockName} (${_lock.HouseName})`
+              text += `${_lock?.LockName} (${_lock?.HouseName})`
             } else {
               text += 'all'
             }
