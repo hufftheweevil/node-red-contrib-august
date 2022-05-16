@@ -11,3 +11,5 @@ Things you can do with your August lock:
 See node help in Node-RED for more details on usage.
 
 Uses [august-api](https://www.npmjs.com/package/august-api)
+
+See [GitHub releases](https://github.com/hufftheweevil/node-red-contrib-august/releases) for change log
