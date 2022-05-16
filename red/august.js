@@ -18,8 +18,7 @@ module.exports = function (RED) {
       let lockId = config.lock || msg.topic
       let command = msg.payload
 
-      let output = payload =>
-        send({ topic: lockId, payload, command: command === 'subscribe' ? 'event' : command })
+      let output = payload => send({ topic: lockId, payload, command })
 
       try {
         switch (command) {
@@ -45,7 +44,15 @@ module.exports = function (RED) {
 
           case 'subscribe':
             if (this.subscribed) return // don't subscribe twice
-            this.subscribed = await api.subscribe(lockId, output)
+
+            this.subscribed = await api.subscribe(lockId, payload =>
+              send({
+                topic: payload.lockID ?? payload.LockID ?? payload.lockId,
+                payload,
+                command: 'event'
+              })
+            )
+
             let text = 'Listening to '
             if (lockId) {
               let _lock = await api.details(lockId)
