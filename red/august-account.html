@@ -14,7 +14,8 @@
     category: 'config',
     defaults: {
       augustId: { type: 'text', required: true },
-      validated: { type: 'boolean', value: false }
+      validated: { type: 'boolean', value: false },
+      api: { type: 'text', value: 'August' }
     },
     credentials: {
       password: { type: 'password', required: true }
@@ -28,7 +29,8 @@
       let getConfig = () => ({
         installId: this.id,
         augustId: $('#node-config-input-augustId').val(),
-        password: $('#node-config-input-password').val()
+        password: $('#node-config-input-password').val(),
+        api: $('#node-input-api').val()
       })
 
       let validationContainer = $('#august-validation')
@@ -107,6 +109,10 @@
               )
         })
       }
+    },
+    oneditsave: function () {
+      // Manually save value
+      this.api = $('#node-input-api').val()
     }
   })
 </script>
@@ -119,6 +125,16 @@
   <div class="form-row">
     <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
     <input type="password" id="node-config-input-password" />
+  </div>
+  <div class="form-row">
+    <label for="node-input-api"><i class="fa fa-key"></i> API</label>
+    <div style="display: inline-block; position: relative; width: 70%; height: 20px;">
+      <select id="node-input-api" style="width: 50%">
+        <option value="August">August</option>
+        <option value="Yale Access">Yale Access</option>
+        <option value="Yale Home">Yale Home</option>
+      </select>
+    </div>
   </div>
   <div class="form-row" style="display:flex">
     <label for="node-config-input-validated"><i class="fa fa-check"></i> Validated</label>

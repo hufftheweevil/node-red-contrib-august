@@ -16,7 +16,8 @@ module.exports = function (RED) {
       this.api = new AugustAPI({
         installId: config.id, // Use node ID (means any new config node must be validated)
         augustId: config.augustId,
-        password: this.credentials.password
+        password: this.credentials.password,
+        countryCode: config.api === 'Yale Home' ? 'non-US' : 'US' // Can be any value other than 'US' for Yale Home
       })
       this.api.validated = config.validated // TEST ONLY
     } catch (err) {
